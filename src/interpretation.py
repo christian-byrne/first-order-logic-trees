@@ -65,6 +65,7 @@ class Predicate:
         self.true_for.add(objects)
 
     def __call__(self, objects):
+        # print(f"Checking if {objects} is in {self.true_for}")
         return objects in self.true_for
 
 
@@ -193,6 +194,10 @@ class Interpretation:
         return self
 
     def add_constant_object_mapping(self, constant: Constant, obj: Any):
+        if obj not in self.domain:
+            raise ValueError(
+                f"Object {obj} assigned to constant {constant} is not in the domain."
+            )
         self.names[constant.name] = obj
         return self
 
@@ -204,19 +209,52 @@ class Interpretation:
         return self
 
     def add_predicate(self, predicate: Predicate):
+        for obj in predicate.true_for:
+            if isinstance(obj, (list, tuple)):
+                if any(o not in self.domain for o in obj):
+                    raise ValueError(
+                        f"Objects {obj} assigned to predicate {predicate} are not in the domain."
+                    )
+            elif obj not in self.domain:
+                raise ValueError(
+                    f"Object {obj} assigned to predicate {predicate} is not in the domain."
+                )
         self.predicates[predicate.name] = predicate
         return self
 
     def sentence_letter_truth_value(self, sentence_letter):
         return self.truth_values[sentence_letter]
 
-    def __call__(self, symbol: Symbol):
-        if isinstance(symbol, SentenceLetter):
+    def __call__(self, symbol: Symbol, *args):
+        if isinstance(symbol, SentenceLetter) or str(symbol) in self.truth_values:
             return self.sentence_letter_truth_value(symbol.letter)
-        if isinstance(symbol, Constant):
+        if isinstance(symbol, Constant) or str(symbol) in self.names:
             return self.names[symbol.name]
-        if isinstance(symbol, Predicate):
-            return symbol.true_for
+        if isinstance(symbol, Predicate) or str(symbol) in self.predicates:
+            ordered_pair = []
+            for arg in args:
+                if isinstance(arg, (tuple, set, list)):
+                    for a in arg:
+                        if isinstance(a, Constant) or str(a) in self.names:
+                            ordered_pair.append(self.names[str(a)])
+                        else:
+                            ordered_pair.append(a)
+                elif isinstance(arg, Constant) or str(arg) in self.names:
+                    ordered_pair.append(self.names[str(arg)])
+
+            result = False
+            for extension in self.predicates[str(symbol)].true_for:
+                if not isinstance(extension, (list, tuple, set)):
+                    assert (
+                        isinstance(ordered_pair, str) or len(ordered_pair) == 1
+                    ), f"Predicate expects 1 argument, got {ordered_pair} with length {len(ordered_pair)}"
+                    if isinstance(ordered_pair, (list, tuple, set)):
+                        ordered_pair = str(ordered_pair[0])
+
+                if str(extension) == str(ordered_pair):
+                    result = True
+                    break
+            return result
         if isinstance(symbol, str):
             # See if a predicate has same name
             if symbol in self.predicates:

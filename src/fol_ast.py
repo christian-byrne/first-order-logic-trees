@@ -109,9 +109,7 @@ class Implies(Expr):
 class Parser:
     def __init__(self, tokens: List[str], interpretation: Interpretation):
         self.tokens = tokens
-        self.resolved_tokens = tokens[:]
         self.pos = 0
-        self.current_evaluation = True
         self.interpretation = interpretation
 
     def peek(self):
@@ -159,6 +157,19 @@ class Parser:
             quantifier = self.consume("QUANTIFIER").value
             variable = self.consume("VARIABLE").value
             expr = self.quantified()
+
+            # If the quantifier is universal, bind all objects in the domain on the interpretation to the variable so that the evaluator can use it
+            if quantifier == "∀":
+                for obj in self.interpretation.domain:
+                    self.interpretation.add_constant_object_mapping(
+                        Constant(variable), obj
+                    )
+            if quantifier == "∃":
+                for obj in self.interpretation.domain:
+                    self.interpretation.add_constant_object_mapping(
+                        Constant(variable), obj
+                    )
+
             return Quantifier(quantifier, variable, expr)
         return self.negation()
 
@@ -197,4 +208,3 @@ class Parser:
         elif token.type == "CONSTANT":
             return self.consume("CONSTANT").value
         raise ValueError(f"Unexpected term token: {token}")
-

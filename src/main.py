@@ -13,9 +13,9 @@ from image_creation import (
 )
 
 symbol_remap = {
-    "or": "∨",
+    "forall": "∀",
+    "exists": "∃",
     "|": "∨",
-    "and": "∧",
     "&": "∧",
     "&&": "∧",
     "not": "¬",
@@ -24,8 +24,8 @@ symbol_remap = {
     "=>": "→",
     "->": "→",
     "—>": "→",
-    "forall": "∀",
-    "exists": "∃",
+    "and": "∧",
+    "or": "∨",
 }
 
 
@@ -52,6 +52,7 @@ I_a = (
 )
 
 formula = remap_symbols("∀x(N(x) or !N(x))")
+formula = remap_symbols("exists x (B(x)) -> forall x (A(x))")
 
 tokens = tokenize(formula)
 parser = Parser(tokens, I_a)

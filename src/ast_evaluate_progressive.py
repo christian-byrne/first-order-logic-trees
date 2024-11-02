@@ -33,7 +33,8 @@ def evaluate_level(nodes: List[Node], interpretation: Interpretation) -> str:
     captions = []
     for node in nodes:
         if isinstance(node, Predicate):
-            node.evaluated_value = interpretation(node.name)(tuple(node.terms))
+            print(f"Evaluating Predicate: {node.name} with terms {node.terms}")
+            node.evaluated_value = interpretation(node.name, tuple(node.terms))
             captions.append(
                 f"Evaluated Predicate {node.name} with terms ({', '.join(node.terms)}) = {node.evaluated_value}"
             )
@@ -88,6 +89,7 @@ def evaluate_level(nodes: List[Node], interpretation: Interpretation) -> str:
 def evaluate_with_binding(
     expr, interpretation: Interpretation, variable: str, value: Any
 ):
+    print(f"Adding binding: {variable} -> {value}")
     interpretation.add_constant_object_mapping(Constant(variable), value)
     result = evaluate(expr, interpretation)
     interpretation.remove_constant_object_mapping(variable)

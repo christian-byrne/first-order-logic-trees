@@ -7,7 +7,7 @@ from interpretation import Interpretation
 def evaluate(node, interpretation: Interpretation):
     if isinstance(node, Predicate):
         # Base case: Evaluate the predicate with its terms
-        return interpretation(node.name)(tuple(node.terms))
+        return interpretation(node.name, tuple(node.terms))
 
     elif isinstance(node, Not):
         # Negation: recursively evaluate and negate the result
