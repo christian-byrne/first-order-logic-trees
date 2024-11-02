@@ -1,6 +1,4 @@
 from typing import Any, List, Union
-import re
-from collections import namedtuple
 
 
 class SentenceLetter:
@@ -49,7 +47,14 @@ class Predicate:
         return self.name
 
     def extend(self, objects):
-        self.true_for.update(objects)
+        if isinstance(objects, (list, tuple, set)):
+            self.true_for.update(tuple(objects))
+        elif isinstance(objects, str):
+            self.true_for.add(objects)
+        else:
+            raise ValueError(
+                f"Predicate {self.name} expects a string or list of strings as arguments."
+            )
         return self
 
     def __getitem__(self, objects):
@@ -131,11 +136,50 @@ class Interpretation:
 
     """
 
-    def __init__(self):
+    def __init__(self, name: str = "I"):
+        self.name = name
         self.domain = set()
         self.truth_values = {}
         self.names = {}
         self.predicates = {}
+
+    def __str__(self):
+        output = [f"Interpretation {self.name}"]
+
+        # Format Domain
+        domain_str = ", ".join(map(str, sorted(self.domain)))
+        output.append(f"\nDomain:\n  {{ {domain_str} }}")
+
+        # Format Constant Mappings
+        if self.names:
+            output.append("\nConstants and Object Mappings:")
+            for constant, obj in sorted(self.names.items()):
+                output.append(f"  {constant} ↦ {obj}")
+
+        # Format Predicates and Extensions
+        if self.predicates:
+            output.append("\nPredicates and Extensions:")
+            for predicate_name, predicate in sorted(self.predicates.items()):
+                if predicate.true_for:
+                    print(predicate.true_for)
+                    extensions = ", ".join(
+                        f"{args}" for args in sorted(predicate.true_for)
+                    )
+                else:
+                    extensions = "∅"  # Empty set if no true arguments
+                output.append(f"  {predicate_name} = {{ {extensions} }}")
+
+        # Format Sentence Letters and Truth Values
+        if self.truth_values:
+            output.append("\nSentence Letters and Truth Values:")
+            for sentence_letter, truth_value in sorted(
+                self.truth_values.items(), key=lambda x: x[0].letter
+            ):
+                output.append(
+                    f"  {sentence_letter}: {'True' if truth_value else 'False'}"
+                )
+
+        return "\n".join(output)
 
     def add_to_domain(self, obj: Union[str, List[str]]):
         if isinstance(obj, (list, tuple, set)):
