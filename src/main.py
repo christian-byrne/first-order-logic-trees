@@ -52,7 +52,7 @@ I_a = (
 )
 
 formula = remap_symbols("∀x(N(x) or !N(x))")
-formula = remap_symbols("exists x (B(x)) -> forall x (A(x))")
+# formula = remap_symbols("exists x (B(x)) -> forall x (A(x))")
 
 tokens = tokenize(formula)
 parser = Parser(tokens, I_a)

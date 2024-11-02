@@ -1,6 +1,6 @@
 
 
-![image example](./output/formula_under_interpretation.png)
+![image example](./output/formula_under_interpretation.example.png)
 
 
 ```python
