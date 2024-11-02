@@ -66,5 +66,5 @@ trees_image = stitch_horizontal(
 final_image = center_and_stitch_vertical(
     [create_interpretation_image(I_a, trees_image.width), trees_image]
 )
-final_image.save("output/formula_under_interpretation.png")
+final_image.save("../output/formula_under_interpretation.png")
 final_image.show()

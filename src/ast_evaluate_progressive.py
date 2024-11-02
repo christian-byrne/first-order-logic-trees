@@ -218,5 +218,5 @@ def visualize_progressive_evaluation(
     final_image = stitch_images_horizontally(images)
     if show_image:
         final_image.show()
-    final_image.save(f"output/{filename}")
+    final_image.save(f"../output/{filename}")
     return final_image
