@@ -5,6 +5,8 @@ from ast_visualize import visualize_ast
 from ast_visualize_progressive import visualize_ast_progressively
 from ast_evaluate_progressive import visualize_progressive_evaluation
 
+from PIL import Image
+
 I_a = (
     Interpretation()
     .add_to_domain(["Corwin", "Benedict"])
@@ -39,13 +41,11 @@ def remap_symbols(formula):
     return formula
 
 
-# Example usage
 formula = "∀x(N(x) or !N(x))"
 # formula = "∀x(N(x) or ∃y(Q(y) ∧ R(x, y)))"
 
 formula = remap_symbols(formula)
 tokens = tokenize(formula)
-# print(tokens)  # Should output a list of tokens
 parser = Parser(tokens, I_a)
 ast = parser.parse()
 # ast_graph = visualize_ast(ast)  # Assuming `ast` is your AST root node
@@ -53,8 +53,24 @@ ast = parser.parse()
 
 res = evaluate(ast, I_a)  # Should evaluate the formula under the interpretation
 
-visualize_ast_progressively(ast, 3)  # Should display a progressive visualization of the AST
+def combine_images_on_nice_bg(images):
+    widths, heights = zip(*(i.size for i in images))
 
-visualize_progressive_evaluation(ast, I_a)
+    total_width = sum(widths)
+    max_height = max(heights)
 
-# print(ast)  # Should output a structured representation of the AST
+    new_im = Image.new("RGB", (total_width, max_height), color=(255, 255, 255))
+
+    x_offset = 0
+    for im in images:
+        new_im.paste(im, (x_offset, 0))
+        x_offset += im.size[0]
+
+    return new_im
+
+ast_image = visualize_ast_progressively(ast, 3, show_image=False)
+eval_image = visualize_progressive_evaluation(ast, I_a, show_image=False)
+
+combined_image = combine_images_on_nice_bg([ast_image, eval_image])
+combined_image.show()
+

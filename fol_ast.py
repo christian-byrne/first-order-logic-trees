@@ -198,28 +198,3 @@ class Parser:
             return self.consume("CONSTANT").value
         raise ValueError(f"Unexpected term token: {token}")
 
-
-def pretty_print_tokens(tokens):
-    last_token = None
-    for token in tokens:
-        if isinstance(token, bool):
-            if last_token != "NOT":
-                print(" ", end="")
-            print("TRUE " if token else "FALSE ", end="")
-            last_token = "BOOL"
-        elif isinstance(token, str):
-            print(token, end="")
-            last_token = token
-        else:
-            if token.value in SPACE_BEFORE:
-                print(" ", end="")
-            print(token.value, end="")
-            if token.value in SPACE_AFTER:
-                print(" ", end="")
-            last_token = token.type
-    print()
-
-
-def replace_range_in_list(lst, start, end, replacement):
-    buffer_n = end - start - 1
-    return lst[:start] + [replacement] + [""] * buffer_n + lst[end:]
