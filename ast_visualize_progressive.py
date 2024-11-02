@@ -36,6 +36,8 @@ def progressive_ast_images(ast, max_depth):
         images.append(Image.open(f"{filename}.png"))
         if os.path.exists(f"{filename}.png"):
           os.remove(f"{filename}.png")  # Clean up temporary file
+        if os.path.exists(f"{filename}.gv"):
+          os.remove(f"{filename}.gv")   # Clean up Graphviz file
         if os.path.exists(f"{filename}"):
           os.remove(f"{filename}")   # Clean up Graphviz file
     
