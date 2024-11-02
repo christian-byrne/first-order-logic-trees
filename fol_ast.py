@@ -24,7 +24,6 @@ TOKEN_REGEX = [
     ("WS", r"\s+"),  # Whitespace
 ]
 
-SPACE_BEFORE = ["→", "∧", "∨", "≠", "="]
 SPACE_BEFORE = []
 SPACE_AFTER = ["→", "∧", "∨", "≠", "=", ","]
 

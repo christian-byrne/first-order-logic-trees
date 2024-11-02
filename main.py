@@ -1,6 +1,7 @@
 from interpretation import Interpretation, Predicate, Constant
 from fol_ast import Parser, tokenize, evaluate
 from ast_visualize import visualize_ast
+from ast_visualize_progressive import visualize_ast_progressively
 
 I_a = (
     Interpretation()
@@ -50,4 +51,5 @@ ast = parser.parse()
 
 res = evaluate(ast, I_a)  # Should evaluate the formula under the interpretation
 
+visualize_ast_progressively(ast, 3)  # Should display a progressive visualization of the AST
 # print(ast)  # Should output a structured representation of the AST
