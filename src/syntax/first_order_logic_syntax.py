@@ -1,58 +1,18 @@
-from collections import namedtuple
-import re
-from interpretation import Interpretation, Constant
+from interpretation_function.nary_tuple import NaryTuple
+from interpretation_function.constant import Constant
 
-from typing import List
+from syntax.tokenizer import tokenize
 
-
-# Define a Token named tuple for easier readability
-Token = namedtuple("Token", ["type", "value"])
-
-# Define token types with regex patterns
-TOKEN_REGEX = [
-    ("QUANTIFIER", r"[∀∃]"),
-    ("VARIABLE", r"[a-z]"),
-    ("PREDICATE", r"[A-Z]"),
-    ("LPAREN", r"\("),
-    ("RPAREN", r"\)"),
-    ("AND", r"∧"),
-    ("OR", r"∨"),
-    ("IMPLIES", r"→"),
-    ("NOT", r"¬"),
-    ("EQUAL", r"="),
-    ("NEQUAL", r"≠"),
-    ("COMMA", r","),
-    ("WS", r"\s+"),  # Whitespace
-]
-
-SPACE_BEFORE = []
-SPACE_AFTER = ["→", "∧", "∨", "≠", "=", ","]
-
-
-def tokenize(formula):
-    tokens = []
-    pos = 0
-    while pos < len(formula):
-        match = None
-        for token_type, regex in TOKEN_REGEX:
-            regex = re.compile(regex)
-            match = regex.match(formula, pos)
-            if match:
-                text = match.group(0)
-                if token_type != "WS":  # Ignore whitespace
-                    tokens.append(Token(token_type, text))
-                pos = match.end(0)
-                break
-        if not match:
-            raise ValueError(f"Unexpected character: {formula[pos]}")
-    return tokens
+from typing import List, Any, Optional
 
 
 class Expr:
     pass
 
 
-class Quantifier(Expr):
+class QuantifierExpr(Expr):
+    NAME = "Quantifier"
+
     def __init__(self, quantifier, variable, expr):
         self.quantifier = quantifier
         self.variable = variable
@@ -63,18 +23,22 @@ class Quantifier(Expr):
         return f"{self.quantifier}{self.variable}({self.expr})"
 
 
-class Predicate(Expr):
-    def __init__(self, name, terms=None):
+class PredicateExpr(Expr):
+    NAME = "Predicate"
+
+    def __init__(self, name, terms: List[Any]):
         self.name = name
-        self.terms = terms or []
+        self.terms = NaryTuple(terms)
         self.precedence = 2
+        self.evaluated_value: Optional[bool] = None
 
     def __str__(self):
-        term_str = ", ".join(map(str, self.terms))
-        return f"{self.name}({term_str})"
+        return f"{self.name}{self.terms}"
 
 
-class Not(Expr):
+class NotExpr(Expr):
+    NAME = "¬"
+
     def __init__(self, expr):
         self.expr = expr
         self.precedence = 3
@@ -83,7 +47,9 @@ class Not(Expr):
         return f"¬{self.expr}"
 
 
-class And(Expr):
+class AndExpr(Expr):
+    NAME = "∧"
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
@@ -93,7 +59,9 @@ class And(Expr):
         return f"({self.left} ∧ {self.right})"
 
 
-class Or(Expr):
+class OrExpr(Expr):
+    NAME = "∨"
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
@@ -103,7 +71,9 @@ class Or(Expr):
         return f"({self.left} ∨ {self.right})"
 
 
-class Implies(Expr):
+class ImpliesExpr(Expr):
+    NAME = "→"
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
@@ -114,10 +84,10 @@ class Implies(Expr):
 
 
 class Parser:
-    def __init__(self, tokens: List[str], interpretation: Interpretation):
-        self.tokens = tokens
+    def __init__(self, formula: str, M):
+        self.tokens = tokenize(formula)
         self.pos = 0
-        self.interpretation = interpretation
+        self.interpretation = M.I
 
     def peek(self):
         if self.pos < len(self.tokens):
@@ -140,7 +110,7 @@ class Parser:
         if token and token.type == "IMPLIES":
             self.consume("IMPLIES")
             right = self.disjunct()
-            return Implies(left, right)
+            return ImpliesExpr(left, right)
         return left
 
     def disjunct(self):
@@ -148,7 +118,7 @@ class Parser:
         while self.peek() and self.peek().type == "OR":
             self.consume("OR")
             right = self.conjunct()
-            left = Or(left, right)
+            left = OrExpr(left, right)
         return left
 
     def conjunct(self):
@@ -156,7 +126,7 @@ class Parser:
         while self.peek() and self.peek().type == "AND":
             self.consume("AND")
             right = self.quantified()
-            left = And(left, right)
+            left = AndExpr(left, right)
         return left
 
     def quantified(self):
@@ -164,27 +134,14 @@ class Parser:
             quantifier = self.consume("QUANTIFIER").value
             variable = self.consume("VARIABLE").value
             expr = self.quantified()
-
-            # If the quantifier is universal, bind all objects in the domain on the interpretation to the variable so that the evaluator can use it
-            if quantifier == "∀":
-                for obj in self.interpretation.domain:
-                    self.interpretation.add_constant_object_mapping(
-                        Constant(variable), obj
-                    )
-            if quantifier == "∃":
-                # Bind to a single object, and the rest will be iterated through in the evaluator
-                self.interpretation.add_constant_object_mapping(
-                    Constant(variable), list(self.interpretation.domain)[0]
-                )
-
-            return Quantifier(quantifier, variable, expr)
+            return QuantifierExpr(quantifier, variable, expr)
         return self.negation()
 
     def negation(self):
         if self.peek() and self.peek().type == "NOT":
             self.consume("NOT")
             expr = self.negation()
-            return Not(expr)
+            return NotExpr(expr)
         elif self.peek() and self.peek().type == "LPAREN":
             # Parse a grouped expression in parentheses
             self.consume("LPAREN")
@@ -205,7 +162,7 @@ class Parser:
                     self.consume("COMMA")
                     terms.append(self.term())
                 self.consume("RPAREN")
-            return Predicate(name, terms)
+            return PredicateExpr(name, terms)
         raise ValueError(f"Expected predicate but got {token}")
 
     def term(self):

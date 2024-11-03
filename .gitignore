@@ -7,3 +7,6 @@ __pycache__/
 *.pyz
 
 temp*
+
+**/ast_level*
+**/progressive_eval*

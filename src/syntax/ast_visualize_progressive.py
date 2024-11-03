@@ -3,11 +3,29 @@ from PIL import Image
 import os
 from typing import List, Union, Tuple
 
-from fol_ast import Expr, Predicate, Quantifier, Not, And, Or, Implies
-from image_creation import add_caption_below_image
-from ast_utils import get_nodes_by_level
+from syntax.first_order_logic_syntax import (
+    Expr,
+    PredicateExpr,
+    QuantifierExpr,
+    NotExpr,
+    AndExpr,
+    OrExpr,
+    ImpliesExpr,
+)
+from utils.image_creation import add_caption_below_image
+from utils.files import cleanup_temp_files
+from syntax.ast_utils import get_nodes_by_level
 
-Node = Union[Predicate, Quantifier, Expr, Not, And, Or, Implies]
+from utils.text_convert.to_latex import t, im, mm, st, symb, symb_sub, replace_symbols
+from utils.text_convert.to_markdown import df, h, pic
+
+from utils.config import Config
+from utils.log import Logger
+
+config = Config()
+logger = Logger(__name__, config["log_level"])()
+
+Node = Union[PredicateExpr, QuantifierExpr, Expr, NotExpr, AndExpr, OrExpr, ImpliesExpr]
 
 
 # Function to create an image of the AST up to a specific depth level
@@ -43,7 +61,8 @@ def create_graph_image(
 def save_graph_image(node: Node, level: int, filename: str) -> List[Node]:
     graph, node_result = create_graph_image(node, level)
     if graph:
-        graph.render(filename, format="png")
+        path = config.get_proj_root() / config["output_relpath"] / filename
+        graph.render(path, format="png")
     return node_result
 
 
@@ -54,11 +73,12 @@ def progressive_ast_images(ast: Expr) -> List[Image.Image]:
     level_count = len(nodes_by_level)
 
     for level in range(level_count):
-        filename = f"ast_level_{level}"
+        filename = config.get_proj_root() / config["output_relpath"] / f"ast_level_{level}"
         target_node = save_graph_image(ast, level, filename)
         image = Image.open(f"{filename}.png")
 
-        caption = f"Built AST - Level {level + 1}\n\n"
+        caption_title = f"Built AST - Level {level + 1}\n\n"
+        caption = ""
 
         # If there are multiple nodes, get all of them
         if len(nodes_by_level[level]) > 1:
@@ -66,29 +86,26 @@ def progressive_ast_images(ast: Expr) -> List[Image.Image]:
                 caption += (
                     f"Term {index + 1}:"
                     + f" {str(node)}\n"
-                    + f"Main Logical Operator: {type(node).__name__}\n"
+                    + f"Main Logical Operator: {type(node).NAME}\n"
                     + f"Precedence: {getattr(node, 'precedence', 'N/A')}\n\n"
                 )
 
         else:
             caption += (
                 f"{str(target_node[0])}\n"
-                + f"Main Logical Operator: {type(target_node[0]).__name__}\n"
+                + f"Main Logical Operator: {type(target_node[0]).NAME}\n"
                 + f"Precedence: {getattr(target_node[0], 'precedence', 'N/A')}\n\n"
             )
 
         annotated_image = add_caption_below_image(
-            image, caption, level_count=level_count
+            image, caption_title + caption, level_count=level_count
         )
         images.append(annotated_image)
-
-        # Clean up temporary files
-        if os.path.exists(f"{filename}.png"):
-            os.remove(f"{filename}.png")
-        if os.path.exists(f"{filename}.gv"):
-            os.remove(f"{filename}.gv")
-        if os.path.exists(f"{filename}"):
-            os.remove(f"{filename}")
+        logger.info(h(f"Built FOL Syntax Tree - Level {level + 1}", 3))
+        if config["log_file"]["embed_images"]:
+            logger.info(pic(f"{filename}.png", f"FOL Syntax Tree - Level {level + 1}"))
+        logger.info(replace_symbols(caption))
+        # cleanup_temp_files(filename)
 
     return images
 
@@ -129,5 +146,5 @@ def visualize_ast_progressively(
     final_image = stitch_images_horizontally(images)
     if show_image:
         final_image.show()
-    final_image.save(f"../output/{filename}")
+    final_image.save(config.get_proj_root() / "output" / filename)
     return final_image

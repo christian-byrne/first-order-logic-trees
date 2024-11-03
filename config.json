@@ -1,0 +1,16 @@
+{
+  "log_level": "INFO",
+  "glossary_relative_path": "glossary-forallx.md",
+  "auto_open_markdown_logs": true,
+  "output_relpath": "output",
+  "log_file": {
+    "filename": "annotated_proof.md",
+    "write_module_name_as_header": false,
+    "embed_images": false
+  },
+  "fonts": {
+    "title_content": ["DejaVuSans.ttf", 19],
+    "caption_content": ["FreeSerif.ttf", 14],
+    "caption_title": ["FreeSerifBold.ttf", 14]
+  }
+}

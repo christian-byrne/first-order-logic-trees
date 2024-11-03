@@ -1,11 +1,19 @@
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
-from interpretation import Interpretation
-from constants import CAPTION_FONT, TITLE_CONTENT_FONT, CAPTION_FONT_BOLD
+from modal_logic.interpretation import Interpretation
 
 from typing import List
 
+from utils.config import Config
+from utils.log import Logger
+
+config = Config()
+logger = Logger(__name__, config["log_level"])()
+
+
+def save_image(image: Image.Image, filename: str):
+    image.save(config.get_proj_root() / "output" / filename)
 
 def stitch_horizontal(images: List[Image.Image]) -> Image.Image:
     widths, heights = zip(*(i.size for i in images))
@@ -48,7 +56,7 @@ def create_interpretation_image(
 ) -> Image.Image:
     # Load a Unicode-compatible font with logical symbols
     try:
-        font = ImageFont.truetype(*TITLE_CONTENT_FONT)
+        font = ImageFont.truetype(*config["fonts"]["title_content"])
     except IOError:
         font = ImageFont.load_default()
 
@@ -138,13 +146,18 @@ def wrap_text_with_newlines(text, width):
         )  # Wrap each line separately
     return wrapped_lines
 
+
 def add_caption_below_image(
     image: Image.Image, caption: str, level_count: int = 10
 ) -> Image.Image:
     # Load fonts with logical symbols support
     try:
-        font = ImageFont.truetype(*CAPTION_FONT)  # Regular font for body
-        bold_font = ImageFont.truetype(*CAPTION_FONT_BOLD)  # Bold font for first line
+        font = ImageFont.truetype(
+            *config["fonts"]["caption_content"]
+        )  # Regular font for body
+        bold_font = ImageFont.truetype(
+            *config["fonts"]["caption_title"]
+        )  # Bold font for first line
     except IOError:
         font = ImageFont.load_default()  # Fallback if the TTF font is not found
         bold_font = font
@@ -172,9 +185,14 @@ def add_caption_below_image(
     for i, line in enumerate(lines):
         # Use bold font for the first line and regular font for the rest
         current_font = bold_font if i == 0 else font
-        text_width = draw.textbbox((0, 0), line, font=current_font)[2]  # Get width of each line
+        text_width = draw.textbbox((0, 0), line, font=current_font)[
+            2
+        ]  # Get width of each line
         draw.text(
-            ((image.width - text_width) // 2, y_text), line, fill="black", font=current_font
+            ((image.width - text_width) // 2, y_text),
+            line,
+            fill="black",
+            font=current_font,
         )
         y_text += line_height
 

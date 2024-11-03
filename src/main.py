@@ -1,47 +1,35 @@
-from interpretation import Interpretation, Predicate, Constant
-from fol_ast import Parser, tokenize
-from ast_evaluate_progressive import visualize_progressive_evaluation
-from ast_visualize_progressive import visualize_ast_progressively
-from image_creation import (
+from rich import print
+import os
+
+from interpretation_function.predicate import Predicate
+from interpretation_function.constant import Constant
+
+from syntax.ast_evaluate import evaluate
+from syntax.first_order_logic_syntax import Parser
+from syntax.tokenizer import remap_symbols
+from syntax.ast_evaluate_progressive import visualize_evaluation_progressively
+from syntax.ast_visualize_progressive import visualize_ast_progressively
+
+from utils.image_creation import (
     stitch_horizontal,
     create_interpretation_image,
     center_and_stitch_vertical,
 )
 
-symbol_remap = {
-    "forall": "∀",
-    "exists": "∃",
-    "|": "∨",
-    "&": "∧",
-    "&&": "∧",
-    "not": "¬",
-    "!": "¬",
-    "implies": "→",
-    "=>": "→",
-    "->": "→",
-    "—>": "→",
-    "and": "∧",
-    "or": "∨",
-}
+from modal_logic.interpretation import Interpretation
+from modal_logic.domain import DomainOfDiscourse
+from modal_logic.model import Model
 
+from utils.text_convert.to_latex import replace_symbols
+from utils.text_convert.to_markdown import h
 
-def remap_symbols(formula):
-    for symbol, replacement in symbol_remap.items():
-        while symbol in formula:
-            formula = formula.replace(symbol, replacement)
-    return formula
+from utils.config import Config
+from utils.log import Logger
 
+config = Config()
+logger = Logger(__name__, config["log_level"])()
 
-I_a = (
-    Interpretation()
-    .add_to_domain(["Corwin", "Benedict"])
-    .add_predicate(Predicate("A", 1).extend("Corwin").extend("Benedict"))
-    .add_predicate(Predicate("B", 1).extend("Benedict"))
-    .add_predicate(Predicate("N", 1))
-    .add_constant_object_mapping(Constant("c"), "Corwin")
-)
-
-example_formulas = [
+EXAMPLE_FORMULAS = [
     "∀x(N(x) or !N(x))",
     "forall x (A(x) and B(x))",
     "exists x (A(x) and B(x))",
@@ -49,21 +37,42 @@ example_formulas = [
     "∀x(N(x) or ∃y(Q(y) ∧ R(x, y)))",
 ]
 
-formula = example_formulas[3]
+M = (
+    Model("M")
+    .with_domain(DomainOfDiscourse("D").expand(["Corwin", "Benedict"]))
+    .with_interpretation_function(
+        Interpretation()
+        .add_predicate(Predicate("A", 1).extend("Corwin").extend("Benedict"))
+        .add_predicate(Predicate("B", 1).extend("Benedict"))
+        .add_predicate(Predicate("N", 1))
+        .extend(Constant("c"), "Corwin")
+    )
+)
 
-formula = remap_symbols(formula)
-tokens = tokenize(formula)
-parser = Parser(tokens, I_a)
+formula = EXAMPLE_FORMULAS[0]
+
+parser = Parser(formula, M)
 ast = parser.parse()
 
 trees_image = stitch_horizontal(
     [
         visualize_ast_progressively(ast),
-        visualize_progressive_evaluation(ast, I_a),
+        visualize_evaluation_progressively(ast, M),
     ]
 )
 final_image = center_and_stitch_vertical(
-    [create_interpretation_image(I_a, trees_image.width), trees_image]
+    [create_interpretation_image(M.I, trees_image.width), trees_image]
 )
-final_image.save("../output/formula_under_interpretation.png")
+final_image.save("../output/formula_under_M.png")
+
+result = evaluate(ast, M.I)
+logger.warning(h("Final Result", 1))
+logger.info(
+    f"\n\nFormula {replace_symbols(remap_symbols(formula))} is {result} in {M.name}."
+)
+
+if config["auto_open_markdown_logs"]:
+    os.system("pandoc ../annotated_proof.md -o ../annotated_proof.pdf")
+    os.system("xdg-open ../annotated_proof.pdf")
+
 final_image.show()

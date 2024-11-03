@@ -1,8 +1,16 @@
-from typing import List, Dict, Union
+from typing import Union
 
-from fol_ast import Expr, Predicate, Quantifier, Not, And, Or, Implies
+from syntax.first_order_logic_syntax import (
+    Expr,
+    PredicateExpr,
+    QuantifierExpr,
+    NotExpr,
+    AndExpr,
+    OrExpr,
+    ImpliesExpr,
+)
 
-Node = Union[Predicate, Quantifier, Expr, Not, And, Or, Implies]
+Node = Union[PredicateExpr, QuantifierExpr, Expr, NotExpr, AndExpr, OrExpr, ImpliesExpr]
 
 
 def get_nodes_by_level(node: Node, nodes_by_level: dict = None, level=0):
