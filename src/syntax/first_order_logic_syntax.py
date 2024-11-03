@@ -1,9 +1,16 @@
 from interpretation_function.nary_tuple import NaryTuple
-from interpretation_function.constant import Constant
 
 from syntax.tokenizer import tokenize
+from interpretation_function.variable import Variable
 
 from typing import List, Any, Optional
+
+from utils.config import Config
+from utils.log import Logger
+
+
+config = Config()
+logger = Logger(__name__, config["log_level"])()
 
 
 class Expr:
@@ -133,6 +140,19 @@ class Parser:
         if self.peek() and self.peek().type == "QUANTIFIER":
             quantifier = self.consume("QUANTIFIER").value
             variable = self.consume("VARIABLE").value
+            # If the quantifier is universal, bind all objects in the domain on the
+            # interpretation to the variable so that the evaluator can use it on the first iteration
+            if quantifier == "∀":
+                logger.debug(f"Binding {variable} to all objects in the domain.")
+                for obj in self.interpretation.domain:
+                    self.interpretation.extend(Variable(variable), obj)
+            if quantifier == "∃":
+                # Bind to a single object, and the rest will be iterated through in the evaluator
+                logger.debug(f"Binding {variable} to the first object in the domain.")
+                self.interpretation.extend(
+                    Variable(variable), list(self.interpretation.domain)[0]
+                )
+
             expr = self.quantified()
             return QuantifierExpr(quantifier, variable, expr)
         return self.negation()

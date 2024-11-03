@@ -65,7 +65,7 @@ def evaluate_level(
         elif isinstance(node, NotExpr):
             node.evaluated_value = not node.expr.evaluated_value
             explanation += (
-                f"¬{node.expr} is true in interpretation {M.I.name}"
+                f"¬{node.expr} is true in interpretation {M.name}"
                 + f" iff {node.expr} is false in {M.I.name}\n\n"
                 + f" ¬({node.expr}) = {node.evaluated_value}\n\n"
             )
@@ -76,9 +76,9 @@ def evaluate_level(
                 node.left.evaluated_value and node.right.evaluated_value
             )
             explanation += (
-                f"{node.left} ∧ {node.right} is true in interpretation {M.I.name}"
+                f"{node.left} ∧ {node.right} is true in interpretation {M.name}"
                 + f" iff both {node.left} is true and {node.right} is true in"
-                + f" {M.I.name}\n\n"
+                + f" {M.name}\n\n"
                 + f" ({node.left} ∧ {node.right}) = {node.evaluated_value}\n\n"
             )
             captions.append(explanation)
@@ -88,9 +88,9 @@ def evaluate_level(
                 node.left.evaluated_value or node.right.evaluated_value
             )
             explanation += (
-                f"{node.left} ∨ {node.right} is true in interpretation {M.I.name}"
+                f"{node.left} ∨ {node.right} is true in interpretation {M.name}"
                 + f" iff either {node.left} is true or {node.right} is true in"
-                + f" {M.I.name}\n\n"
+                + f" {M.name}\n\n"
                 + f" ({node.left} ∨ {node.right}) = {node.evaluated_value}\n\n"
             )
             captions.append(explanation)
@@ -101,18 +101,18 @@ def evaluate_level(
             )
             reasons = []
             if not node.left.evaluated_value:
-                reasons.append(f"{node.left} is False in {M.I.name}")
+                reasons.append(f"{node.left} is False in {M.name}")
             if node.right.evaluated_value:
-                reasons.append(f"{node.right} is True in {M.I.name}")
+                reasons.append(f"{node.right} is True in {M.name}")
             if reasons:
                 reason = ", ".join(reasons)
             else:
-                reason = f"({node.left} is True in {M.I.name}) ∧ ({node.right} is False in {M.I.name})"
+                reason = f"({node.left} is True in {M.I.name}) ∧ ({node.right} is False in {M.name})"
 
             explanation += (
-                f"{node.left} → {node.right} is true in interpretation {M.I.name}"
+                f"{node.left} → {node.right} is true in {M.name} under interpretation {M.I.name}"
                 + f" iff either {node.left} is false or {node.right} is true in"
-                + f" {M.I.name}\n\n"
+                + f" {M.name}\n\n"
                 + f"{reason}\n\n"
                 + f" ({node.left} → {node.right}) = {node.evaluated_value}\n\n"
             )
@@ -130,22 +130,23 @@ def evaluate_level(
             # Replace the quantifier node with True or False based on the domain and expression evaluation
             if node.quantifier == "∀":
                 evaluations: List[Tuple[bool, Any]] = []
-                for obj in M.universal_instantiation(Variable(node.variable)):
+                for d_obj in M.universal_instantiation(Variable(node.variable)):
                     res = evaluate(node.expr, M.I)
-                    evaluations.append((res, obj))
-                    
+                    evaluations.append((res, d_obj))
+                    logger.debug(f"{node.variable} = {d_obj} satisfies {node.expr}: {res}")
+
                 node.evaluated_value = all(result[0] for result in evaluations)
                 failed_evaluations = [
                     f"{node.variable} = {obj} does not satisfy {node.expr}"
                     for result, obj in evaluations
                     if not result
                 ]
-                result_str = f"{node.expr} ⟷ {node.evaluated_value} for all objects in {M.I.name}'s domain"
+                result_str = f"{node.expr} ⟷ {node.evaluated_value} for all objects in {M.name}'s domain"
                 if not node.evaluated_value:
                     result_str = ", ".join(failed_evaluations)
 
                 explanation += (
-                    f"{node.quantifier}{node.variable}({node.expr}) is true in {M.I.name}"
+                    f"{node.quantifier}{node.variable}({node.expr}) is true in {M.name} under {M.I.name}"
                     + f" iff every object in {M.I.name}'s domain"
                     + f" ({abbreviated_domain}) satisfies {node.expr}\n\n"
                     + f"{result_str}\n\n"
@@ -155,9 +156,10 @@ def evaluate_level(
 
             elif node.quantifier == "∃":
                 evaluations: List[Tuple[bool, Any]] = []
-                for obj in M.universal_instantiation(Variable(node.variable)):
+                for d_obj in M.universal_instantiation(Variable(node.variable)):
                     res = evaluate(node.expr, M.I)
-                    evaluations.append((res, obj))
+                    evaluations.append((res, d_obj))
+                    logger.debug(f"{node.variable} = {d_obj} satisfies {node.expr}: {res}")
 
                 node.evaluated_value = any(result[0] for result in evaluations)
                 successful_evaluations = [
@@ -166,7 +168,7 @@ def evaluate_level(
                     if result
                 ]
                 explanation += (
-                    f"{node.quantifier}{node.variable}({node.expr}) is true in {M.I.name}"
+                    f"{node.quantifier}{node.variable}({node.expr}) is true in {M.name} under {M.I.name}"
                     + f" iff at least one object in {M.I.name}'s domain"
                     + f" ({abbreviated_domain}) satisfies {node.expr}\n\n"
                     + f"{', '.join(successful_evaluations)}\n\n"

@@ -2,6 +2,7 @@ from typing import TypeVar, Generic, Collection
 
 
 from interpretation_function.constant import Constant
+from interpretation_function.variable import Variable
 
 T = TypeVar("T")
 
@@ -33,10 +34,10 @@ class NaryTuple(Generic[T]):
         """
         resolved = []
         for term in self.terms:
-            if isinstance(term, Constant):
+            if isinstance(term, (Constant, Variable)):
                 resolved.append(interpretation(term))
             else:
-                resolved.append(term)
+                resolved.append(interpretation(Variable(term)))
         return NaryTuple(resolved)
 
     def __iter__(self):

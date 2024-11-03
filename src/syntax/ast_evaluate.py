@@ -1,4 +1,5 @@
-from syntax.first_order_logic_syntax import AndExpr, Constant, ImpliesExpr, NotExpr, OrExpr, PredicateExpr, QuantifierExpr
+from syntax.first_order_logic_syntax import AndExpr, ImpliesExpr, NotExpr, OrExpr, PredicateExpr, QuantifierExpr
+from interpretation_function.constant import Constant
 from modal_logic.interpretation import Interpretation
 
 

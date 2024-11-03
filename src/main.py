@@ -54,6 +54,8 @@ formula = EXAMPLE_FORMULAS[0]
 parser = Parser(formula, M)
 ast = parser.parse()
 
+result = evaluate(ast, M.I)
+
 trees_image = stitch_horizontal(
     [
         visualize_ast_progressively(ast),
@@ -65,14 +67,13 @@ final_image = center_and_stitch_vertical(
 )
 final_image.save("../output/formula_under_M.png")
 
-result = evaluate(ast, M.I)
 logger.warning(h("Final Result", 1))
 logger.info(
     f"\n\nFormula {replace_symbols(remap_symbols(formula))} is {result} in {M.name}."
 )
 
-if config["auto_open_markdown_logs"]:
-    os.system("pandoc ../annotated_proof.md -o ../annotated_proof.pdf")
-    os.system("xdg-open ../annotated_proof.pdf")
+# if config["auto_open_markdown_logs"]:
+#     os.system("pandoc ../annotated_proof.md -o ../annotated_proof.pdf")
+#     os.system("xdg-open ../annotated_proof.pdf")
 
 final_image.show()

@@ -5,6 +5,9 @@
 
 
 
+
+
+
 > **Domain**: The collection of objects assumed for a symbolization in FOL, or that gives the range of the quantifiers in an interpretation.
 > 
 >   It represents the set of all elements that can be quantified over or that the variables in the logical system can refer to within a given model.
@@ -55,6 +58,16 @@ $D$ = $\{\}$
 
 
 $D$' = $\{Corwin, Benedict\}$
+
+
+
+
+
+
+
+
+
+
 
 
 ### Built FOL Syntax Tree - Level 1
@@ -116,16 +129,24 @@ Precedence: 2
 
 
 
-Object (d) satisfies N in interpretation I iff (x) is true in I [(d)/(x)] 
 
- To evaluate predicate N with terms (x), resolve terms under I:
- (I(x)) $\mapsto$ (x) 
 
- Then, find N(x) by determining if (x) $\in$ I(N) = the set of tuples from the domain of I that satisfy the predicate N under I. 
+To evaluate predicate N with terms (x): 
 
- I(N) = {} 
+ First, resolve terms (x) under I:
+ (I(x)) $\mapsto$ (Corwin) 
 
- (x) $\in$ {} = False
+ An object (d) satisfies N in interpretation I under M $\triangleq$ $\langle$D, I$\rangle$ iff (Corwin) is true in I [(d)/(Corwin)] 
+
+ I(N) = the set of tuples from the domain M of M that satisfy the predicate N under I. 
+
+
+
+I(N) = {} 
+
+ (I(x)) $\mapsto$ (Corwin) 
+
+ (Corwin) $\in$ {} = False
 
 
 
@@ -137,19 +158,27 @@ Object (d) satisfies N in interpretation I iff (x) is true in I [(d)/(x)]
 
 
 
-Object (d) satisfies N in interpretation I iff (x) is true in I [(d)/(x)] 
-
- To evaluate predicate N with terms (x), resolve terms under I:
- (I(x)) $\mapsto$ (x) 
-
- Then, find N(x) by determining if (x) $\in$ I(N) = the set of tuples from the domain of I that satisfy the predicate N under I. 
-
- I(N) = {} 
-
- (x) $\in$ {} = False
 
 
-$\lnot$N(x) is true in interpretation I iff N(x) is false in I
+To evaluate predicate N with terms (x): 
+
+ First, resolve terms (x) under I:
+ (I(x)) $\mapsto$ (Corwin) 
+
+ An object (d) satisfies N in interpretation I under M $\triangleq$ $\langle$D, I$\rangle$ iff (Corwin) is true in I [(d)/(Corwin)] 
+
+ I(N) = the set of tuples from the domain M of M that satisfy the predicate N under I. 
+
+
+
+I(N) = {} 
+
+ (I(x)) $\mapsto$ (Corwin) 
+
+ (Corwin) $\in$ {} = False
+
+
+$\lnot$N(x) is true in interpretation M iff N(x) is false in I
 
  $\lnot$(N(x)) = True
 
@@ -163,7 +192,7 @@ $\lnot$N(x) is true in interpretation I iff N(x) is false in I
 
 
 
-N(x) $\lor$ $\lnot$N(x) is true in interpretation I iff either N(x) is true or $\lnot$N(x) is true in I
+N(x) $\lor$ $\lnot$N(x) is true in interpretation M iff either N(x) is true or $\lnot$N(x) is true in M
 
  (N(x) $\lor$ $\lnot$N(x)) = True
 
@@ -185,6 +214,13 @@ N(x) $\lor$ $\lnot$N(x) is true in interpretation I iff either N(x) is true or $
 $\Vdash_{M}$ $Corwin$ $\in$ $D$
 
 
+Tried to unbind variable x from interpretation but it was not found.
+
+
+
+
+
+
 ##### Checking if $Benedict$ is in Domain $D$
 
 
@@ -193,9 +229,13 @@ $\Vdash_{M}$ $Corwin$ $\in$ $D$
 $\Vdash_{M}$ $Benedict$ $\in$ $D$
 
 
-$\forall$x((N(x) $\lor$ $\lnot$N(x))) is true in I iff every object in I's domain ({Corwin, Benedict}) satisfies (N(x) $\lor$ $\lnot$N(x))
 
-(N(x) $\lor$ $\lnot$N(x)) $\leftrightarrow$ True for all objects in I's domain
+
+
+
+$\forall$x((N(x) $\lor$ $\lnot$N(x))) is true in M under I iff every object in I's domain ({Corwin, Benedict}) satisfies (N(x) $\lor$ $\lnot$N(x))
+
+(N(x) $\lor$ $\lnot$N(x)) $\leftrightarrow$ True for all objects in M's domain
 
 $\forall$x((N(x) $\lor$ $\lnot$N(x))) $\leftrightarrow$ True
 

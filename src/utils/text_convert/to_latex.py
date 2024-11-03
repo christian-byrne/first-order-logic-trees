@@ -49,6 +49,9 @@ SYMBOL_TO_LATEX = [
     (r"≥", r"$\\geq$"),
     (r"≈", r"$\\approx$"),
     (r"≡", r"$\\equiv$"),
+    (r"⟨", r"$\\langle$"),
+    (r"⟩", r"$\\rangle$"),
+    (r"≝|≜|:=|::=", r"$\\triangleq$"),
 ]
 
 def replace_symbols(input_str: str) -> str:

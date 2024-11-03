@@ -12,7 +12,7 @@ class Variable:
     def __str__(self):
         return self.name
 
-    # def __eq__(self, other: Union["Variable", str]):
-    #     if isinstance(other, Variable):
-    #         return self.name == other.name
-    #     return self.name == other
+    def __eq__(self, other: Union["Variable", str]):
+        if isinstance(other, Variable):
+            return self.name == other.name
+        return self.name == other

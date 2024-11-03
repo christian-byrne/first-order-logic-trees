@@ -2,6 +2,14 @@ import itertools
 
 from .nary_tuple import NaryTuple
 from modal_logic.interpretation import Interpretation
+from interpretation_function.variable import Variable
+
+from utils.config import Config
+from utils.log import Logger
+
+
+config = Config()
+logger = Logger(__name__, config["log_level"])()
 
 
 class Predicate:
@@ -20,7 +28,11 @@ class Predicate:
         return self.name
 
     def __call__(self, objects: NaryTuple, interpretation: Interpretation):
-        return objects.get_resolved_terms(interpretation) in self.true_for
+        resolved = objects.get_resolved_terms(interpretation)
+        logger.debug(
+            f"Predicate Resolved terms to: {resolved} before checking if they exist in extension"
+        )
+        return resolved in self.true_for
 
     def extend(self, objects):
         if isinstance(objects, (list, tuple, set)):
@@ -36,11 +48,15 @@ class Predicate:
     def represent_extension(self):
         return "{" + ", ".join([f"{term}" for term in self.true_for]) + "}"
 
-    def represent_domain_permutations(self, interpretation: Interpretation, max_permutations=None):
+    def represent_domain_permutations(
+        self, interpretation: Interpretation, max_permutations=None
+    ):
         if max_permutations is None:
             max_permutations = int(self.arity * 2.5)
 
-        domain_permutations = list(itertools.product(interpretation.domain, repeat=self.arity))
+        domain_permutations = list(
+            itertools.product(interpretation.domain, repeat=self.arity)
+        )
         for domain_object in interpretation.domain:
             domain_permutations.append(
                 f"{self.name}({domain_object}) = {self(NaryTuple([domain_object]), interpretation)}"
@@ -70,29 +86,36 @@ class Predicate:
             cartesian_product_str = " × ".join(
                 [f"{interpretation.domain_name}"] * self.arity
             )
-            permutations = [] 
-            lines.extend([
-                f"Since {self} is a {self.arity}-ary predicate,",
-                f"{interpretation.name}({self}) ⊆ {cartesian_product_str}",
-                f"would be the set of tuples of {self.arity} elements in",
-                f"{interpretation.domain_name} for which {self} holds.\n\n",
-                f"In this case, "
-                "\n\n",
-            ])
-        lines.extend([
-            f"In particular, "
+            permutations = []
+            lines.extend(
+                [
+                    f"Since {self} is a {self.arity}-ary predicate,",
+                    f"{interpretation.name}({self}) ⊆ {cartesian_product_str}",
+                    f"would be the set of tuples of {self.arity} elements in",
+                    f"{interpretation.domain_name} for which {self} holds.\n\n",
+                    f"In this case, " "\n\n",
+                ]
+            )
+        # lines.extend([
+        #     f"In particular, "
 
-
-        ])
+        # ])
 
     def explain_evaluation(
         self, interpretation: Interpretation, input: NaryTuple, abbreviated=True
     ):
-        resolved_input_tuple = input.get_resolved_terms(interpretation)
+        if any(term not in interpretation.names for term in input):
+            # TODO: since the bindings are already broken by this point in the program, we cannot resolve variables so we have to just use the first n items in the domain
+            resolved_input_tuple = NaryTuple(list(interpretation.domain)[: len(input)])
+        else:
+            resolved_input_tuple = input.get_resolved_terms(interpretation)
+
         short_explanation = " ".join(
             [
-                f" {interpretation.name}({self}) =",
+                f"\n\n{interpretation.name}({self}) =",
                 f"{self.represent_extension()}",
+                "\n\n",
+                f"{input.represent_under_interpretation()} ⟼ {resolved_input_tuple}",
                 "\n\n",
                 f"{resolved_input_tuple} ∈ {self.represent_extension()}",
                 f"= {self(resolved_input_tuple, interpretation)}\n\n",
@@ -101,21 +124,23 @@ class Predicate:
 
         preamble = " ".join(
             [
-                f"Object {input.represent_example_extension()}",
+                f"To evaluate predicate {self} with terms {input}:",
+                "\n\n",
+                f"First, resolve terms {input} under {interpretation.name}:\n",
+                f"{input.represent_under_interpretation()} ⟼ {resolved_input_tuple}",
+                "\n\n",
+                f"An object {input.represent_example_extension()}",
                 f"satisfies {self}",
                 f"in interpretation {interpretation.name}",
+                f"under {interpretation.model_name} :=",
+                f"⟨{interpretation.domain_name}, {interpretation.name}⟩",
                 f"iff {resolved_input_tuple}",
                 f"is true in {interpretation.name}",
                 f"[{input.represent_example_extension()}/{resolved_input_tuple}]",
                 "\n\n",
-                f"To evaluate predicate {self} with terms {input},",
-                f"resolve terms under {interpretation.name}:\n",
-                f"{input.represent_under_interpretation()} ⟼ {resolved_input_tuple}",
-                "\n\n",
-                f"Then, find {self}{resolved_input_tuple}",
-                f"by determining if {resolved_input_tuple} ∈",
                 f"{interpretation.name}({self}) =",
-                f"the set of tuples from the domain of {interpretation.name} that",
+                f"the set of tuples from the domain {interpretation.model_name}",
+                f"of {interpretation.model_name} that",
                 f"satisfy the predicate {str(self)[0]} under {interpretation.name}.",
                 "\n\n",
             ]

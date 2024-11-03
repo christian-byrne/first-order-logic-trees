@@ -30,9 +30,10 @@ class Interpretation:
        elements as arguments and returns a domain element.
     """
 
-    def __init__(self, name: str = "I", domain_name: str = "D"):
+    def __init__(self, name: str = "I", domain_name: str = "D", model_name: str = "M"):
         self.name = name
         self.domain_name = domain_name
+        self.model_name = model_name
         self.domain = set()
         self.truth_values = {}
         self.names = {}
@@ -82,10 +83,21 @@ class Interpretation:
         return self
 
     def extend(self, constant: Union[Constant, Variable], obj: Any):
+        logger.debug(f"Extending interpretation with {constant} ↦ {obj}")
         self.names[constant.name] = obj
         return self
 
     def restrict(self, constant: Union[Constant, Variable]):
+        if constant.name not in self.names:
+            if isinstance(constant, Variable):
+                logger.warning(
+                    f"Tried to unbind variable {constant} from interpretation but it was not found."
+                )
+            else:
+                logger.warning(
+                    f"Tried to remove {constant} from interpretation but it was not found."
+                )
+            return self
         del self.names[constant.name]
         return self
 
@@ -111,8 +123,13 @@ class Interpretation:
     ):
         if isinstance(symbol, PredicateExpr):
             return self.predicates[symbol.name]
-        if isinstance(symbol, Constant):
+        if isinstance(symbol, Constant) or str(symbol) in self.names:
             return self.names[str(symbol)]
+        if isinstance(symbol, Variable):
+            if str(symbol) in self.names:
+                return self.names[str(symbol)]
+            else:
+                return list(self.names.values())[0]
         if isinstance(symbol, SentenceLetter):
             return self.sentence_letter_truth_value(symbol.letter)
         if isinstance(symbol, str) and symbol in self.domain:

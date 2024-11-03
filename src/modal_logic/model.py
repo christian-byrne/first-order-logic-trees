@@ -16,6 +16,7 @@ class Model:
         self.I = interpretation
         if self.D and not self.I.domain:
             self.I.set_domain(self.D)
+        self.I.model_name = self.name
         return self
 
     def with_domain(self, domain: DomainOfDiscourse):
@@ -29,8 +30,8 @@ class Model:
             msg = f"Attempted to bind {var} to {domain_obj} which is not in the domain."
             raise ValueError(msg)
 
-        # Save the original binding of the variable if it exists
-        original_binding = self.I.names.get(var, None)
+        # remove any existing bindings of the variable
+        self.I.restrict(var)
 
         # Bind the variable to the object
         self.I.extend(var, domain_obj)
@@ -39,16 +40,24 @@ class Model:
             yield
         finally:
             # Restore the original binding of the variable
-            if original_binding is not None:
-                self.I.extend(var, original_binding)
-            else:
-                self.I.restrict(var)
+            # self.I.restrict(var)
+
+            pass
+            # NOTE: most likely it is fine to leave the most recent binding of the variable so that other objects can query information about the satisfying bindings
 
     def universal_instantiation(self, variable: Variable):
+        if len(self.D) == 0:
+            msg = "Cannot instantiate a universally quantified variable with an empty domain."
+            raise ValueError(msg)
+
         for obj in self.D:
             with self.bind_variable(variable, obj):
-                yield
+                yield obj
 
     def existential_instantiation(self, variable: Variable, obj):
+        if len(self.D) == 0:
+            msg = "Cannot instantiate a universally quantified variable with an empty domain."
+            raise ValueError(msg)
+
         with self.bind_variable(variable, obj):
-            yield
+            yield obj
