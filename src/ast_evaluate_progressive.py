@@ -127,10 +127,21 @@ def evaluate_level(
             node.evaluated_value = (
                 not node.left.evaluated_value or node.right.evaluated_value
             )
+            reasons = []
+            if not node.left.evaluated_value:
+                reasons.append(f"{node.left} is False in {interpretation.name}")
+            if node.right.evaluated_value:
+                reasons.append(f"{node.right} is True in {interpretation.name}")
+            if reasons:
+                reason = ', '.join(reasons)
+            else:
+                reason = f"({node.left} is True in {interpretation.name}) ∧ ({node.right} is False in {interpretation.name})"
+
             explanation += (
                 f"{node.left} → {node.right} is true in interpretation {interpretation.name}"
                 + f" iff either {node.left} is false or {node.right} is true in"
                 + f" {interpretation.name}\n\n"
+                + f"{reason}\n\n"
                 + f" ({node.left} → {node.right}) = {node.evaluated_value}\n\n"
             )
             captions.append(explanation)
@@ -156,17 +167,16 @@ def evaluate_level(
                     for result, obj in evaluations
                     if not result
                 ]
-                result_str = ""
-                if node.evaluated_value:
+                result_str = f"{node.expr} ⟷ {node.evaluated_value} for all objects in {interpretation.name}'s domain"
+                if not node.evaluated_value:
                     result_str = ", ".join(failed_evaluations)
-                else:
-                    result_str = f"{node.expr} ⟷ {node.evaluated_value} for all objects in {interpretation.name}'s domain"
+
                 explanation += (
                     f"{node.quantifier}{node.variable}({node.expr}) is true in {interpretation.name}"
                     + f" iff every object in {interpretation.name}'s domain"
                     + f" ({abbreviated_domain}) satisfies {node.expr}\n\n"
-                    + result_str
-                    + f"{node.quantifier}{node.variable} ⟷ {node.evaluated_value}\n\n"
+                    + f"{result_str}\n\n"
+                    + f"{node.quantifier}{node.variable}({node.expr}) ⟷ {node.evaluated_value}\n\n"
                 )
                 captions.append(explanation)
 
@@ -177,7 +187,7 @@ def evaluate_level(
                 ]
                 node.evaluated_value = any(result[0] for result in evaluations)
                 successful_evaluations = [
-                    f"{interpretation.name}({node.variable}) = {obj} satisfies {node.expr}"
+                    f"{interpretation.name}({node.variable}) = '{obj}' satisfies {node.expr}"
                     for result, obj in evaluations
                     if result
                 ]
