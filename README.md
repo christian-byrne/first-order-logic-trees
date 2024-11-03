@@ -12,19 +12,18 @@ I_a = (
     .add_constant_object_mapping(Constant("c"), "Corwin")
 )
 
-formula = remap_symbols("∀x(N(x) or !N(x))")
+formula = remap_symbols("∀x(N(x) ∨ ¬N(x))")
 tree = Parser(tokenize(formula), I_a).parse()
 
-image = center_and_stitch_vertical(
+trees_image = stitch_horizontal(
     [
-        create_interpretation_image(I_a, trees_image.width),
-        stitch_horizontal(
-            [
-                visualize_ast_progressively(tree),
-                visualize_progressive_evaluation(tree, I_a),
-            ]
-        ),
+        visualize_ast_progressively(tree),
+        visualize_progressive_evaluation(tree, I_a),
     ]
 )
-image.save("..output/formula_under_interpretation.png")
+image = center_and_stitch_vertical(
+    [create_interpretation_image(I_a, trees_image.width), trees_image]
+)
+
+image.save("../output/formula_under_interpretation.png")
 ```
