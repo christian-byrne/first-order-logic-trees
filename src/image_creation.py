@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
 from interpretation import Interpretation
-from constants import CAPTION_FONT, TITLE_CONTENT_FONT
+from constants import CAPTION_FONT, TITLE_CONTENT_FONT, CAPTION_FONT_BOLD
 
 from typing import List
 
@@ -138,15 +138,16 @@ def wrap_text_with_newlines(text, width):
         )  # Wrap each line separately
     return wrapped_lines
 
-
 def add_caption_below_image(
     image: Image.Image, caption: str, level_count: int = 10
 ) -> Image.Image:
-    # Load a Unicode-compatible font with logical symbols support
+    # Load fonts with logical symbols support
     try:
-        font = ImageFont.truetype(*CAPTION_FONT)  # Adjust path and size as needed
+        font = ImageFont.truetype(*CAPTION_FONT)  # Regular font for body
+        bold_font = ImageFont.truetype(*CAPTION_FONT_BOLD)  # Bold font for first line
     except IOError:
         font = ImageFont.load_default()  # Fallback if the TTF font is not found
+        bold_font = font
 
     max_width = image.width  # Max width for line wrapping
 
@@ -168,10 +169,12 @@ def add_caption_below_image(
     # Draw each line of wrapped text below the image
     draw = ImageDraw.Draw(annotated_image)
     y_text = image.height + 5
-    for line in lines:
-        text_width = draw.textbbox((0, 0), line, font=font)[2]  # Get width of each line
+    for i, line in enumerate(lines):
+        # Use bold font for the first line and regular font for the rest
+        current_font = bold_font if i == 0 else font
+        text_width = draw.textbbox((0, 0), line, font=current_font)[2]  # Get width of each line
         draw.text(
-            ((image.width - text_width) // 2, y_text), line, fill="black", font=font
+            ((image.width - text_width) // 2, y_text), line, fill="black", font=current_font
         )
         y_text += line_height
 

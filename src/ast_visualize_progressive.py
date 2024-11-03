@@ -52,24 +52,34 @@ def progressive_ast_images(ast: Expr) -> List[Image.Image]:
     images = []
     nodes_by_level = get_nodes_by_level(ast)
     level_count = len(nodes_by_level)
-    
 
     for level in range(level_count):
         filename = f"ast_level_{level}"
         target_node = save_graph_image(ast, level, filename)
-        print(f"Target node at level {level}: {target_node}")
         image = Image.open(f"{filename}.png")
 
-        # Add a caption describing the current level
-        caption = (
-            f"Built AST - Level {level + 1}\n\n"
-            + f"Nodes at this level: {len(nodes_by_level[level])}\n\n"
-            + "Target node:\n"
-            + f"Type: {type(target_node[0]).__name__}\n"
-            + f"Expression: {str(target_node[0])}\n"
-            + f"Precedence: {getattr(target_node[0], 'precedence', 'N/A')}\n\n"
+        caption = f"Built AST - Level {level + 1}\n\n"
+
+        # If there are multiple nodes, get all of them
+        if len(nodes_by_level[level]) > 1:
+            for index, node in enumerate(nodes_by_level[level]):
+                caption += (
+                    f"Term {index + 1}:"
+                    + f" {str(node)}\n"
+                    + f"Main Logical Operator: {type(node).__name__}\n"
+                    + f"Precedence: {getattr(node, 'precedence', 'N/A')}\n\n"
+                )
+
+        else:
+            caption += (
+                f"{str(target_node[0])}\n"
+                + f"Main Logical Operator: {type(target_node[0]).__name__}\n"
+                + f"Precedence: {getattr(target_node[0], 'precedence', 'N/A')}\n\n"
+            )
+
+        annotated_image = add_caption_below_image(
+            image, caption, level_count=level_count
         )
-        annotated_image = add_caption_below_image(image, caption, level_count=level_count)
         images.append(annotated_image)
 
         # Clean up temporary files

@@ -65,7 +65,6 @@ class Predicate:
         self.true_for.add(objects)
 
     def __call__(self, objects):
-        # print(f"Checking if {objects} is in {self.true_for}")
         return objects in self.true_for
 
 
@@ -162,7 +161,6 @@ class Interpretation:
             output.append("\nPredicates and Extensions:")
             for predicate_name, predicate in sorted(self.predicates.items()):
                 if predicate.true_for:
-                    print(predicate.true_for)
                     extensions = ", ".join(
                         f"{args}" for args in sorted(predicate.true_for)
                     )
@@ -227,7 +225,6 @@ class Interpretation:
 
     def __call__(self, symbol: Symbol, *args):
         if isinstance(symbol, Constant) or str(symbol) in self.names:
-            print(f"Looking up {symbol} in {self.names}")
             return self.names[str(symbol)]
         if isinstance(symbol, Predicate) or str(symbol) in self.predicates:
             ordered_pair = []
