@@ -153,7 +153,7 @@ class Interpretation:
 
         # Format Constant Mappings
         if self.names:
-            output.append("\nConstants and Object Mappings:")
+            output.append("\nConstants ↦ Objects:")
             for constant, obj in sorted(self.names.items()):
                 output.append(f"  {constant} ↦ {obj}")
 
@@ -172,7 +172,7 @@ class Interpretation:
 
         # Format Sentence Letters and Truth Values
         if self.truth_values:
-            output.append("\nSentence Letters and Truth Values:")
+            output.append("\nSentence Letters Truth Values:")
             for sentence_letter, truth_value in sorted(
                 self.truth_values.items(), key=lambda x: x[0].letter
             ):
@@ -226,10 +226,9 @@ class Interpretation:
         return self.truth_values[sentence_letter]
 
     def __call__(self, symbol: Symbol, *args):
-        if isinstance(symbol, SentenceLetter) or str(symbol) in self.truth_values:
-            return self.sentence_letter_truth_value(symbol.letter)
         if isinstance(symbol, Constant) or str(symbol) in self.names:
-            return self.names[symbol.name]
+            print(f"Looking up {symbol} in {self.names}")
+            return self.names[str(symbol)]
         if isinstance(symbol, Predicate) or str(symbol) in self.predicates:
             ordered_pair = []
             for arg in args:
@@ -255,9 +254,7 @@ class Interpretation:
                     result = True
                     break
             return result
-        if isinstance(symbol, str):
-            # See if a predicate has same name
-            if symbol in self.predicates:
-                return self.predicates[symbol]
+        if isinstance(symbol, SentenceLetter) or str(symbol) in self.truth_values:
+            return self.sentence_letter_truth_value(symbol.letter)
 
         return symbol

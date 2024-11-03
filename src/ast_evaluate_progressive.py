@@ -1,99 +1,206 @@
 from graphviz import Digraph
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import os
-import textwrap
-from typing import Any, List, Union
+from typing import Any, List, Union, Tuple
 
 from fol_ast import And, Implies, Not, Or, Predicate, Quantifier, Expr
 from ast_evaluate import evaluate
 from ast_visualize_progressive import create_graph_image
+from ast_utils import get_nodes_by_level
+
 from interpretation import Interpretation, Constant
+from image_creation import add_caption_below_image
 
 Node = Union[Predicate, Not, And, Or, Implies, Quantifier, Expr]
 
 
 # Step 1: Identify Nodes at Each Level
-def get_nodes_by_level(node: Node, nodes_by_level: dict = None, level=0):
-    if nodes_by_level is None:
-        nodes_by_level = {}
-    if level not in nodes_by_level:
-        nodes_by_level[level] = []
-    nodes_by_level[level].append(node)
+levels_with_full_explanations = set()
 
-    # Recursively collect nodes in child expressions
-    for child in getattr(node, "__dict__", {}).values():
-        if isinstance(child, Expr):
-            get_nodes_by_level(child, nodes_by_level, level + 1)
 
-    return nodes_by_level
+def format_predicate(
+    predicate_name: str, terms: List[str], evaluated_terms: List[str]
+) -> Tuple[str, str]:
+    if len(terms) == 0:
+        return f"{predicate_name}()", f"{predicate_name}()"
+    if len(terms) == 1:
+        return (
+            f"{predicate_name}({terms[0]})",
+            f"{predicate_name}({evaluated_terms[0]})",
+        )
+    return (
+        f"{predicate_name}(...{'...'.join(terms)}...)",
+        f"{predicate_name}(...{'...'.join(evaluated_terms)}...)",
+    )
+
+
+def format_mapping(predicate_objs: List[str]) -> Tuple[str, str]:
+    if len(predicate_objs) == 0:
+        return "", ""
+    if len(predicate_objs) == 1:
+        return "d", predicate_objs[0]
+    alphabet = "defghijklmnopqrstuvwxyzabc"
+    letters = [alphabet[i] for i in range(len(predicate_objs))]
+    return f"{', '.join(letters)}", f"{', '.join(predicate_objs)}"
 
 
 # Step 2: Evaluate Nodes at a Given Level with Captions
-def evaluate_level(nodes: List[Node], interpretation: Interpretation) -> str:
+def evaluate_level(
+    nodes: List[Node],
+    interpretation: Interpretation,
+    current_lvl_num: int,
+    max_levels: int,
+) -> str:
     captions = []
     for node in nodes:
+        explanation = f"Evaluated AST - Level {max_levels - current_lvl_num}\n\n"
         if isinstance(node, Predicate):
-            print(f"Evaluating Predicate: {node.name} with terms {node.terms}")
             node.evaluated_value = interpretation(node.name, tuple(node.terms))
-            captions.append(
-                f"Evaluated Predicate {node.name} with terms ({', '.join(node.terms)}) = {node.evaluated_value}"
+            resolved_terms = []
+            for term in node.terms:
+                resolved_terms.append(interpretation(term))
+
+            terms_under_I = [f"I({term})" for term in node.terms]
+            A_x, A_c = format_predicate(node.name, node.terms, resolved_terms)
+            d, c = format_mapping(resolved_terms)
+
+            short_explanation = (
+                f" {interpretation.name}({node.name}) ="
+                + f" {interpretation.predicates[node.name].true_for}\n\n"
+                + f" {', '.join(resolved_terms)} ∈ {interpretation.predicates[node.name].true_for}"
+                + f" = {node.evaluated_value}\n\n"
             )
+            preamble = (
+                f"An object {d} satisfies {A_x}"
+                + f" in interpretation {interpretation.name}"
+                + f" iff {A_c}"
+                + f" is true in {interpretation.name}[{d}/{c}]\n\n"
+                + f"To evaluate predicate {node.name} with terms {', '.join(node.terms)},"
+                + f" resolve terms under {interpretation.name}:\n"
+                + f"{', '.join(terms_under_I)} = {', '.join(resolved_terms)}\n\n"
+                + f"Then, find {node.name}({', '.join(resolved_terms)})"
+                + f" by determining if {', '.join(resolved_terms)} ∈ the "
+                + f" set of ordered pairs mapped to by {interpretation.name}({node.name})\n\n"
+            )
+            if current_lvl_num not in levels_with_full_explanations:
+                explanation += preamble + short_explanation
+                levels_with_full_explanations.add(current_lvl_num)
+            else:
+                explanation += short_explanation
+
+            captions.append(explanation)
 
         elif isinstance(node, Not):
             node.evaluated_value = not node.expr.evaluated_value
-            captions.append(f"Evaluated Not: ¬({node.expr}) = {node.evaluated_value}")
+            explanation += (
+                f"¬{node.expr} is true in interpretation {interpretation.name}"
+                + f" iff {node.expr} is false in {interpretation.name}\n\n"
+                + f" ¬({node.expr}) = {node.evaluated_value}\n\n"
+            )
+            captions.append(explanation)
 
         elif isinstance(node, And):
             node.evaluated_value = (
                 node.left.evaluated_value and node.right.evaluated_value
             )
-            captions.append(
-                f"Evaluated And: ({node.left} ∧ {node.right}) = {node.evaluated_value}"
+            explanation += (
+                f"{node.left} ∧ {node.right} is true in interpretation {interpretation.name}"
+                + f" iff both {node.left} is true and {node.right} is true in"
+                + f" {interpretation.name}\n\n"
+                + f" ({node.left} ∧ {node.right}) = {node.evaluated_value}\n\n"
             )
+            captions.append(explanation)
 
         elif isinstance(node, Or):
             node.evaluated_value = (
                 node.left.evaluated_value or node.right.evaluated_value
             )
-            captions.append(
-                f"Evaluated Or: ({node.left} ∨ {node.right}) = {node.evaluated_value}"
+            explanation += (
+                f"{node.left} ∨ {node.right} is true in interpretation {interpretation.name}"
+                + f" iff either {node.left} is true or {node.right} is true in"
+                + f" {interpretation.name}\n\n"
+                + f" ({node.left} ∨ {node.right}) = {node.evaluated_value}\n\n"
             )
+            captions.append(explanation)
 
         elif isinstance(node, Implies):
             node.evaluated_value = (
                 not node.left.evaluated_value or node.right.evaluated_value
             )
-            captions.append(
-                f"Evaluated Implies: ({node.left} → {node.right}) = {node.evaluated_value}"
+            explanation += (
+                f"{node.left} → {node.right} is true in interpretation {interpretation.name}"
+                + f" iff either {node.left} is false or {node.right} is true in"
+                + f" {interpretation.name}\n\n"
+                + f" ({node.left} → {node.right}) = {node.evaluated_value}\n\n"
             )
+            captions.append(explanation)
 
         elif isinstance(node, Quantifier):
+            max_length = 5
+            abbreviated_domain = [str(obj) for obj in interpretation.domain][
+                :max_length
+            ]
+            if len(interpretation.domain) > max_length:
+                abbreviated_domain.append("...")
+            abbreviated_domain = "{" + ", ".join(abbreviated_domain) + "}"
+
             # Replace the quantifier node with True or False based on the domain and expression evaluation
             if node.quantifier == "∀":
-                node.evaluated_value = all(
+                evaluations = [
                     evaluate_with_binding(node.expr, interpretation, node.variable, obj)
                     for obj in interpretation.domain
+                ]
+                node.evaluated_value = all(result[0] for result in evaluations)
+                failed_evaluations = [
+                    f"{node.variable} = {obj} does not satisfy {node.expr}"
+                    for result, obj in evaluations
+                    if not result
+                ]
+                result_str = ""
+                if node.evaluated_value:
+                    result_str = ", ".join(failed_evaluations)
+                else:
+                    result_str = f"{node.expr} ⟷ {node.evaluated_value} for all objects in {interpretation.name}'s domain"
+                explanation += (
+                    f"{node.quantifier}{node.variable}({node.expr}) is true in {interpretation.name}"
+                    + f" iff every object in {interpretation.name}'s domain"
+                    + f" ({abbreviated_domain}) satisfies {node.expr}\n\n"
+                    + result_str
+                    + f"{node.quantifier}{node.variable} ⟷ {node.evaluated_value}\n\n"
                 )
-                captions.append(f"Evaluated ∀{node.variable}: {node.evaluated_value}")
-            elif node.quantifier == "∃":
-                node.evaluated_value = any(
-                    evaluate_with_binding(node.expr, interpretation, node.variable, obj)
-                    for obj in interpretation.domain
-                )
-                captions.append(f"Evaluated ∃{node.variable}: {node.evaluated_value}")
+                captions.append(explanation)
 
-    return "; ".join(captions)
+            elif node.quantifier == "∃":
+                evaluations = [
+                    evaluate_with_binding(node.expr, interpretation, node.variable, obj)
+                    for obj in interpretation.domain
+                ]
+                node.evaluated_value = any(result[0] for result in evaluations)
+                successful_evaluations = [
+                    f"{interpretation.name}({node.variable}) = {obj} satisfies {node.expr}"
+                    for result, obj in evaluations
+                    if result
+                ]
+                explanation += (
+                    f"{node.quantifier}{node.variable}({node.expr}) is true in {interpretation.name}"
+                    + f" iff at least one object in {interpretation.name}'s domain"
+                    + f" ({abbreviated_domain}) satisfies {node.expr}\n\n"
+                    + f"{', '.join(successful_evaluations)}\n\n"
+                    + f"{node.quantifier}{node.variable}({node.expr}) ⟷ {node.evaluated_value}\n\n"
+                )
+                captions.append(explanation)
+
+    return "".join(captions)
 
 
 # Helper function to evaluate with a variable binding
 def evaluate_with_binding(
     expr, interpretation: Interpretation, variable: str, value: Any
 ):
-    print(f"Adding binding: {variable} -> {value}")
     interpretation.add_constant_object_mapping(Constant(variable), value)
     result = evaluate(expr, interpretation)
     interpretation.remove_constant_object_mapping(variable)
-    return result
+    return result, value
 
 
 # Step 3: Generate Image of the AST at Each Level
@@ -120,11 +227,12 @@ def create_graph_image(node: Node, evaluated=True, graph=None):
 def progressive_evaluation_images(ast: Expr, interpretation: Interpretation):
     images = []
     nodes_by_level = get_nodes_by_level(ast)
+    total_levels = len(nodes_by_level)
 
     # Start evaluating from the deepest level (max_depth) and move upwards
-    for level in sorted(nodes_by_level.keys(), reverse=True):
+    for level_num, level in enumerate(sorted(nodes_by_level.keys(), reverse=True)):
         caption = evaluate_level(
-            nodes_by_level[level], interpretation
+            nodes_by_level[level], interpretation, level_num, total_levels
         )  # Evaluate nodes and get caption
 
         # Create a graph image after each level evaluation
@@ -134,7 +242,9 @@ def progressive_evaluation_images(ast: Expr, interpretation: Interpretation):
 
         # Load the image and add the caption below it
         image = Image.open(f"{filename}.png")
-        annotated_image = add_caption_below_image(image, caption)
+        annotated_image = add_caption_below_image(
+            image, caption, level_count=total_levels
+        )
         images.append(annotated_image)
 
         # Clean up temporary files
@@ -146,42 +256,6 @@ def progressive_evaluation_images(ast: Expr, interpretation: Interpretation):
             os.remove(f"{filename}")
 
     return images
-
-
-
-def add_caption_below_image(image: Image.Image, caption: str) -> Image.Image:
-    # Load a Unicode-compatible font with logical symbols support
-    try:
-        font = ImageFont.truetype("DejaVuSans.ttf", 16)  # Adjust path and size as needed
-    except IOError:
-        font = ImageFont.load_default()  # Fallback if the TTF font is not found
-
-    max_width = image.width  # Max width for line wrapping
-
-    # Wrap text to fit within the max width
-    draw = ImageDraw.Draw(image)
-    lines = textwrap.wrap(caption, width=max_width // 10)  # Adjust width divisor as needed for wrapping
-
-    # Calculate total height for all lines using textbbox
-    line_height = draw.textbbox((0, 0), "A", font=font)[3]  # Height of a single line
-    total_text_height = line_height * len(lines) + 10  # Add padding
-
-    # Create a new image with extra height for the caption
-    total_height = image.height + total_text_height
-    annotated_image = Image.new("RGB", (image.width, total_height), "white")
-
-    # Paste the original image on top
-    annotated_image.paste(image, (0, 0))
-
-    # Draw each line of wrapped text below the image
-    draw = ImageDraw.Draw(annotated_image)
-    y_text = image.height + 5
-    for line in lines:
-        text_width = draw.textbbox((0, 0), line, font=font)[2]  # Get width of each line
-        draw.text(((image.width - text_width) // 2, y_text), line, fill="black", font=font)
-        y_text += line_height
-
-    return annotated_image
 
 
 # Step 5: Stitch Images Horizontally

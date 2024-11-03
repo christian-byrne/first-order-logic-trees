@@ -1,7 +1,4 @@
-
-
 ![image example](./output/formula_under_interpretation.example.png)
-
 
 ```python
 I_a = (
@@ -14,19 +11,18 @@ I_a = (
 )
 
 formula = remap_symbols("∀x(N(x) or !N(x))")
+tree = Parser(tokenize(formula), I_a).parse()
 
-tokens = tokenize(formula)
-parser = Parser(tokens, I_a)
-ast = parser.parse()
-
-trees_image = stitch_horizontal(
+image = center_and_stitch_vertical(
     [
-        visualize_ast_progressively(ast, 3, show_image=False),
-        visualize_progressive_evaluation(ast, I_a, show_image=False),
+        create_interpretation_image(I_a, trees_image.width),
+        stitch_horizontal(
+            [
+                visualize_ast_progressively(tree),
+                visualize_progressive_evaluation(tree, I_a),
+            ]
+        ),
     ]
 )
-final_image = center_and_stitch_vertical(
-    [create_interpretation_image(I_a, trees_image.width), trees_image]
-)
-final_image.save("output/formula_under_interpretation.png")
+image.save("..output/formula_under_interpretation.png")
 ```

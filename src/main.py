@@ -37,10 +37,6 @@ def remap_symbols(formula):
     return formula
 
 
-# formula = "∀x(N(x) or ∃y(Q(y) ∧ R(x, y)))"
-# ast_graph = visualize_ast(ast)  # Assuming `ast` is your AST root node
-# ast_graph.render("ast_tree", format="png", view=True)  # Save and view the image
-# res = evaluate(ast, I_a)  # Should evaluate the formula under the interpretation
 
 I_a = (
     Interpretation()
@@ -51,8 +47,14 @@ I_a = (
     .add_constant_object_mapping(Constant("c"), "Corwin")
 )
 
+formula = "∀x(N(x) or ∃y(Q(y) ∧ R(x, y)))"
 formula = remap_symbols("∀x(N(x) or !N(x))")
+# formula = remap_symbols("exists x (A(x) and B(x))")
 # formula = remap_symbols("exists x (B(x)) -> forall x (A(x))")
+
+# ast_graph = visualize_ast(ast)  # Assuming `ast` is your AST root node
+# ast_graph.render("ast_tree", format="png", view=True)  # Save and view the image
+# res = evaluate(ast, I_a)  # Should evaluate the formula under the interpretation
 
 tokens = tokenize(formula)
 parser = Parser(tokens, I_a)
@@ -60,7 +62,7 @@ ast = parser.parse()
 
 trees_image = stitch_horizontal(
     [
-        visualize_ast_progressively(ast, 3, show_image=False),
+        visualize_ast_progressively(ast, show_image=False),
         visualize_progressive_evaluation(ast, I_a, show_image=False),
     ]
 )

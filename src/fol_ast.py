@@ -4,6 +4,7 @@ from interpretation import Interpretation, Constant
 
 from typing import List
 
+
 # Define a Token named tuple for easier readability
 Token = namedtuple("Token", ["type", "value"])
 
@@ -56,6 +57,7 @@ class Quantifier(Expr):
         self.quantifier = quantifier
         self.variable = variable
         self.expr = expr
+        self.precedence = 4
 
     def __str__(self):
         return f"{self.quantifier}{self.variable}({self.expr})"
@@ -65,6 +67,7 @@ class Predicate(Expr):
     def __init__(self, name, terms=None):
         self.name = name
         self.terms = terms or []
+        self.precedence = 2
 
     def __str__(self):
         term_str = ", ".join(map(str, self.terms))
@@ -74,6 +77,7 @@ class Predicate(Expr):
 class Not(Expr):
     def __init__(self, expr):
         self.expr = expr
+        self.precedence = 3
 
     def __str__(self):
         return f"¬{self.expr}"
@@ -83,6 +87,7 @@ class And(Expr):
     def __init__(self, left, right):
         self.left = left
         self.right = right
+        self.precedence = 6
 
     def __str__(self):
         return f"({self.left} ∧ {self.right})"
@@ -92,6 +97,7 @@ class Or(Expr):
     def __init__(self, left, right):
         self.left = left
         self.right = right
+        self.precedence = 7
 
     def __str__(self):
         return f"({self.left} ∨ {self.right})"
@@ -101,6 +107,7 @@ class Implies(Expr):
     def __init__(self, left, right):
         self.left = left
         self.right = right
+        self.precedence = 8
 
     def __str__(self):
         return f"({self.left} → {self.right})"
@@ -165,10 +172,10 @@ class Parser:
                         Constant(variable), obj
                     )
             if quantifier == "∃":
-                for obj in self.interpretation.domain:
-                    self.interpretation.add_constant_object_mapping(
-                        Constant(variable), obj
-                    )
+                # Bind to a single object, and the rest will be iterated through in the evaluator
+                self.interpretation.add_constant_object_mapping(
+                    Constant(variable), list(self.interpretation.domain)[0]
+                )
 
             return Quantifier(quantifier, variable, expr)
         return self.negation()

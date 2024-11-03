@@ -1,12 +1,14 @@
 from graphviz import Digraph
-import textwrap
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import os
-from typing import List, Union
+from typing import List, Union, Tuple
 
 from fol_ast import Expr, Predicate, Quantifier, Not, And, Or, Implies
+from image_creation import add_caption_below_image
+from ast_utils import get_nodes_by_level
 
 Node = Union[Predicate, Quantifier, Expr, Not, And, Or, Implies]
+
 
 # Function to create an image of the AST up to a specific depth level
 def create_graph_image(
@@ -15,7 +17,7 @@ def create_graph_image(
     current_level: int = 0,
     graph: Digraph = None,
     parent: Node = None,
-) -> Digraph:
+) -> Tuple[Digraph, List[Node]]:
     if current_level > level:
         return
     if graph is None:
@@ -24,33 +26,50 @@ def create_graph_image(
     label = str(node)
     graph.node(str(id(node)), label)
 
+    ret_node = [node]
     if parent:
         graph.edge(str(id(parent)), str(id(node)))
 
     for child in getattr(node, "__dict__", {}).values():
         if isinstance(child, Expr):
-            create_graph_image(child, level, current_level + 1, graph, node)
+            x = create_graph_image(child, level, current_level + 1, graph, node)
+            if x:
+                ret_node = x[1]
 
-    return graph
+    return graph, ret_node
+
 
 # Function to save the graph image for a specific depth level
-def save_graph_image(node: Node, level: int, filename: str) -> None:
-    graph = create_graph_image(node, level)
+def save_graph_image(node: Node, level: int, filename: str) -> List[Node]:
+    graph, node_result = create_graph_image(node, level)
     if graph:
         graph.render(filename, format="png")
+    return node_result
+
 
 # Function to generate images of the AST being built progressively level by level
-def progressive_ast_images(ast: Expr, max_depth: int) -> List[Image.Image]:
+def progressive_ast_images(ast: Expr) -> List[Image.Image]:
     images = []
+    nodes_by_level = get_nodes_by_level(ast)
+    level_count = len(nodes_by_level)
+    
 
-    for level in range(max_depth + 1):
+    for level in range(level_count):
         filename = f"ast_level_{level}"
-        save_graph_image(ast, level, filename)
+        target_node = save_graph_image(ast, level, filename)
+        print(f"Target node at level {level}: {target_node}")
         image = Image.open(f"{filename}.png")
 
         # Add a caption describing the current level
-        caption = f"Building AST - Level {level}"
-        annotated_image = add_caption_below_image(image, caption)
+        caption = (
+            f"Built AST - Level {level + 1}\n\n"
+            + f"Nodes at this level: {len(nodes_by_level[level])}\n\n"
+            + "Target node:\n"
+            + f"Type: {type(target_node[0]).__name__}\n"
+            + f"Expression: {str(target_node[0])}\n"
+            + f"Precedence: {getattr(target_node[0], 'precedence', 'N/A')}\n\n"
+        )
+        annotated_image = add_caption_below_image(image, caption, level_count=level_count)
         images.append(annotated_image)
 
         # Clean up temporary files
@@ -63,40 +82,6 @@ def progressive_ast_images(ast: Expr, max_depth: int) -> List[Image.Image]:
 
     return images
 
-# Function to add a caption below an image
-def add_caption_below_image(image: Image.Image, caption: str) -> Image.Image:
-    # Load a Unicode-compatible font with support for logical symbols
-    try:
-        font = ImageFont.truetype("DejaVuSans.ttf", 16)
-    except IOError:
-        font = ImageFont.load_default()  # Fallback if TTF font is unavailable
-
-    max_width = image.width
-
-    # Wrap text to fit within max width
-    draw = ImageDraw.Draw(image)
-    lines = textwrap.wrap(caption, width=max_width // 10)
-
-    # Calculate total height for all lines
-    line_height = draw.textbbox((0, 0), "A", font=font)[3]
-    total_text_height = line_height * len(lines) + 10
-
-    # Create a new image with extra height for the caption
-    total_height = image.height + total_text_height
-    annotated_image = Image.new("RGB", (image.width, total_height), (255, 255, 255))
-
-    # Paste the original image on top
-    annotated_image.paste(image, (0, 0))
-
-    # Draw each line of wrapped text below the image
-    draw = ImageDraw.Draw(annotated_image)
-    y_text = image.height + 5
-    for line in lines:
-        text_width = draw.textbbox((0, 0), line, font=font)[2]
-        draw.text(((image.width - text_width) // 2, y_text), line, fill="black", font=font)
-        y_text += line_height
-
-    return annotated_image
 
 # Function to stitch images horizontally
 def stitch_images_horizontally(images: List[Image.Image]) -> Image.Image:
@@ -127,11 +112,10 @@ def stitch_images_horizontally(images: List[Image.Image]) -> Image.Image:
 # Main function to visualize the AST being built progressively
 def visualize_ast_progressively(
     ast: Expr,
-    max_depth: int,
     show_image: bool = False,
     filename: str = "progressive_ast.png",
 ) -> Image.Image:
-    images = progressive_ast_images(ast, max_depth)
+    images = progressive_ast_images(ast)
     final_image = stitch_images_horizontally(images)
     if show_image:
         final_image.show()
